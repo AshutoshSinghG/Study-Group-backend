@@ -88,15 +88,18 @@ npm start
 
 ## 📡 API Endpoints (Quick Reference)
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/auth/google` | Google Login shuru karein |
-| `POST` | `/groups` | Naya study group banayein |
-| `POST` | `/groups/:id/goal` | Group ke liye goal set karein |
-| `PUT` | `/groups/:id/goal` | Active goal edit karein (Creator only) |
-| `POST` | `/groups/:id/activity` | Apni study activity record karein |
-| `GET` | `/groups/:id/leaderboard` | Real-time leaderboard dekhein |
-| `GET` | `/groups/:id/progress` | Overall group progress dekhein |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/auth/google` | Public | Redirects to Google Login Page |
+| `GET` | `/auth/google/callback` | Public | Returns JWT token after login with Google
+| `GET` | `/auth/me` | Private | Fetches current logged-in user's details
+| `POST` | `/groups` | Private | Creates a new study group
+| `POST` | `/groups/:id/member` | Private | Adds a new member to the group (Creator only)
+| `POST` | `/groups/:id/goal` | Private | Sets an active goal for the group
+| `PUT` | `/groups/:id/goal` | Private | Edits an existing goal (Creator only)
+| `POST` | `/groups/:id/activity` | Private | Records solved questions activity
+| `GET` | `/groups/:id/leaderboard` | Private | Gets the group's live leaderboard
+| `GET` | `/groups/:id/progress` | Private | Gets the group's overall goal progress
 
 ---
 
