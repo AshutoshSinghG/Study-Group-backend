@@ -1,54 +1,62 @@
-require("dotenv").config();
-
-const express = require("express");
-const cors = require("cors");
-const connectDB = require("./config/db");
-const { connectRedis } = require("./config/redis");
-const passport = require("./config/passport");
-const errorHandler = require("./middleware/errorHandler");
-
-// route imports
-const authRoutes = require("./routes/authRoutes");
-const groupRoutes = require("./routes/groupRoutes");
-const subjectRoutes = require("./routes/subjectRoutes");
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const passport = require('passport');
+const connectDB = require('./config/db');
+const { connectRedis } = require('./utils/redisClient');
+const groupRoutes = require('./routes/groupRoutes');
+const cron = require('node-cron');
+const StudyGroup = require('./models/StudyGroup');
+const { archiveIfExpired } = require('./controllers/goalController');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
-// middleware
+// Security & Logging Middlewares
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(passport.initialize());
+if (process.env.NODE_ENV === 'development') {
+    app.use(morgan('dev'));
+}
 
-// routes
-app.use("/auth", authRoutes);
-app.use("/groups", groupRoutes);
-app.use("/subjects", subjectRoutes);
+// Database & Redis Connections
+connectDB();
+connectRedis();
 
-// quick health check
-app.get("/", (req, res) => {
-  res.json({ status: "ok", message: "Study Group API is running" });
+app.get('/', (req, res) => {
+    res.json({ message: "Backend is running" });
 });
 
-// TODO: add rate limiting at some point
+// Har raat 12:00 AM UTC par ye logic chalega
+cron.schedule('0 0 * * *', async () => {
+    try {
+        console.log("CRON: Checking for expired or recurring goals to reset/archive...");
 
-// global error handler - needs to be after routes
-app.use(errorHandler);
+        // Saare wo groups dhoondo jinka goal active hai
+        const groups = await StudyGroup.find({ activeGoal: { $ne: null } });
 
-// start everything up
+        for (const group of groups) {
+            await archiveIfExpired(group);
+        }
+
+        console.log("CRON: Goals checked successfully.");
+    } catch (err) {
+        console.error("CRON Error:", err.message);
+    }
+}, {
+    timezone: "UTC"
+});
+
+// All Routes
+app.use('/auth', authRoutes);
+app.use('/groups', groupRoutes);
+
+
 const PORT = process.env.PORT || 5000;
-
-const startServer = async () => {
-  try {
-    await connectDB();
-    connectRedis();
-
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  } catch (err) {
-    console.log("Failed to start server:", err);
-    process.exit(1);
-  }
-};
-
-startServer();
+app.listen(PORT, () => {
+    console.log(`Server is started in ${process.env.NODE_ENV} mode on port ${PORT}`);
+});
