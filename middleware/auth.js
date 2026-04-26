@@ -12,7 +12,7 @@ const protect = async (req, res, next) => {
             // Attach user info to request object
             req.user = {
                 email: decoded.email,
-                id: decoded.id
+                userId: decoded.userId || decoded.id
             };
 
             next();

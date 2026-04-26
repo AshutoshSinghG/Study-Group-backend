@@ -1,6 +1,7 @@
 const GroupGoal = require("../models/GroupGoal");
 const StudyGroup = require("../models/StudyGroup");
 const Subject = require("../models/Subject");
+const { client } = require('../utils/redisClient')
 
 const createGoal = async (req, res) => {
     try {
