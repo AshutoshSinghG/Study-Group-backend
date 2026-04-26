@@ -1,63 +1,72 @@
-const GroupGoal = require('../models/GroupGoal');
-const StudyGroup = require('../models/StudyGroup');
+const GroupGoal = require("../models/GroupGoal");
+const StudyGroup = require("../models/StudyGroup");
+const Subject = require("../models/Subject");
 
-//Add a new group goal
-exports.addGroupGoal = async (req, res) => {
+const createGoal = async (req, res) => {
     try {
         const groupId = req.params.id;
-        const { title, subject, metric, deadline, targetValue, isRecurring, frequency } = req.body;
+        const { title, subjects, targetCount, goalType, deadline, frequency } = req.body;
 
         const group = await StudyGroup.findById(groupId);
-        if (!group) {
-            return res.status(404).json({ success: false, message: "Group not found" });
+        if (!group) return res.status(404).json({ success: false, message: "Group nahi mila" });
+
+        // Only creator check 
+        if (group.creator.toString() !== req.user.userId.toString()) {
+            return res.status(403).json({ success: false, message: "Sirf creator goal set kar sakta hai" });
         }
 
-        //Only creator can set goals
-        if (group.creator !== req.user.email) {
-            return res.status(403).json({ success: false, message: "Only creator can set goals" });
+        // Ek waqt pe ek hi active goal 
+        const existingGoal = await GroupGoal.findOne({ group: groupId, isActive: true });
+        if (existingGoal) {
+            return res.status(409).json({ success: false, message: "Pehle se ek goal active hai" });
         }
 
-        // Check for existing active goal
-        const activeGoal = await GroupGoal.findOne({ groupId, isActive: true });
-        if (activeGoal) {
-            return res.status(409).json({
-                success: false,
-                message: "An active goal already exists for this group",
-                data: null,
-                error: { code: "ACTIVE_GOAL_EXISTS", details: "Please wait for the current goal to expire or archive it." }
-            });
-        }
+        // Resolve subject names to IDs 
+        const subjectDocs = await Subject.find({ name: { $in: subjects } });
+        const subjectIds = subjectDocs.map(s => s._id);
 
         const newGoal = await GroupGoal.create({
-            groupId,
+            group: groupId,
             title,
-            subjects: [subject], // Multi-subject supports ke liye array rakha hai
-            metric: metric || "questionsSolved",
-            targetValue,
-            deadline: new Date(deadline),
-            isRecurring: isRecurring || false,
-            frequency: frequency || "none"
+            subjects: subjectIds,
+            targetCount,
+            goalType: goalType || "deadline",
+            deadline: deadline ? new Date(deadline) : null,
+            frequency: frequency || "none",
+            isActive: true,
+            startDate: new Date()
         });
 
-        // Update StudyGroup with this active goal ID
         group.activeGoal = newGoal._id;
         await group.save();
 
-        res.status(201).json({
-            success: true,
-            message: "Goal added successfully",
-            data: {
-                goalId: newGoal._id,
-                title: newGoal.title,
-                subject: newGoal.subjects,
-                metric: newGoal.metric,
-                deadline: newGoal.deadline,
-                progress: 0,
-                isActive: true
-            },
-            error: null
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, error: { details: error.message } });
+        res.status(201).json({ success: true, message: "Goal set ho gaya!", data: newGoal });
+    } catch (err) {
+        console.error("Goal Error:", err);
+        res.status(500).json({ success: false, message: "Goal banane mein issue aaya" });
     }
 };
+
+
+const archiveIfExpired = async (group) => {
+    if (!group.activeGoal) return null;
+
+    const goal = await GroupGoal.findById(group.activeGoal);
+    if (!goal) return null;
+
+    const now = new Date();
+
+    // Deadline Type Logic
+    if (goal.goalType === "deadline" && goal.deadline && now > new Date(goal.deadline)) {
+        goal.isActive = false;
+        await goal.save();
+
+        // Group se link hata do taaki creator naya goal bana sake
+        await StudyGroup.findByIdAndUpdate(group._id, { activeGoal: null });
+        console.log(`[System]: Goal "${goal.title}" archive ho gaya (Deadline expired)`);
+        return null;
+    }
+
+    return goal;
+};
+module.exports = { createGoal, archiveIfExpired };

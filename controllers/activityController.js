@@ -1,78 +1,68 @@
-const GroupMemberActivity = require('../models/GroupMemberActivity');
-const GroupGoal = require('../models/GroupGoal');
-const Question = require('../models/Question');
-const { client } = require('../utils/redisClient');
+const GroupMemberActivity = require("../models/GroupMemberActivity");
+const GroupGoal = require("../models/GroupGoal");
+const Question = require("../models/Question");
+const { client } = require("../utils/redisClient");
 
-//Record solved question attempt
-exports.recordActivity = async (req, res) => {
+const recordActivity = async (req, res) => {
     try {
-        const groupId = req.params.id;
         const { questionId, status, timeSpent } = req.body;
-        const userEmail = req.user.email;
+        const userId = req.user.userId;
+        const groupId = req.params.id;
 
-        //Check if a active goal exists
-        const activeGoal = await GroupGoal.findOne({ groupId, isActive: true });
-        if (!activeGoal) {
-            return res.status(400).json({ success: false, message: "No active goal found for this group" });
+        const goal = await GroupGoal.findOne({ group: groupId, isActive: true });
+        if (!goal) return res.status(400).json({ success: false, message: "Koi active goal nahi hai" });
+
+        // Status check: only solved/correct 
+        if (!["solved", "correct"].includes(status)) {
+            return res.status(400).json({ success: false, message: "Attempt status valid nahi hai" });
         }
 
-        //Deadline Check
-        if (new Date() > activeGoal.deadline) {
-            activeGoal.isActive = false;
-            activeGoal.isArchived = true;
-            await activeGoal.save();
-            return res.status(400).json({ success: false, message: "Goal deadline has passed" });
+        // Time window check 
+        const now = new Date();
+        if (goal.deadline && now > new Date(goal.deadline)) {
+            return res.status(400).json({ success: false, message: "Goal archive ho chuka hai" });
         }
 
-        //Question & Subject Check
         const question = await Question.findById(questionId);
-        if (!question || !activeGoal.subjects.includes(question.subjectId)) {
-            return res.status(400).json({
-                success: false,
-                message: "Question subject does not match the active group goal",
-                error: { code: "INVALID_SUBJECT" }
-            });
+        if (!question) return res.status(404).json({ success: false, message: "Sawal nahi mila" });
+
+        // Subject match check 
+        if (!goal.subjects.includes(question.subjectId.toString())) {
+            return res.status(400).json({ success: false, message: "Ye subject is goal mein nahi hai" });
         }
 
-        //Status Check
-        if (status !== 'solved' && status !== 'correct') {
-            return res.status(400).json({ success: false, message: "Only 'solved' or 'correct' status is counted" });
+        // Unique attempt check (Per-user de-dupe) 
+        const alreadyDone = await GroupMemberActivity.findOne({
+            goal: goal._id,
+            user: userId,
+            questionId: questionId
+        });
+
+        if (alreadyDone) {
+            return res.status(409).json({ success: false, message: "Ye sawal aap pehle hi solve kar chuke ho" });
         }
 
-        //De-duplication check (handled by unique index in schema)
-        try {
-            const activity = await GroupMemberActivity.create({
-                groupId,
-                goalId: activeGoal._id,
-                userEmail,
-                questionId,
-                subjectId: question.subjectId,
-                status,
-                timeSpent
-            });
+        const activity = await GroupMemberActivity.create({
+            group: groupId,
+            goal: goal._id,
+            user: userId,
+            questionId,
+            subject: question.subjectId,
+            status,
+            timeSpent,
+            activityDate: now
+        });
 
-            //REDIS INVALIDATION: Cache clear karna taaki leaderboard update ho sake
-            await client.del(`leaderboard:${groupId}`);
-            await client.del(`progress:${groupId}`);
+        // Invalidate Cache 
+        const keys = await client.keys(`lb:${groupId}:*`);
+        if (keys.length > 0) await client.del(keys);
+        await client.del(`progress:${groupId}`);
 
-            res.status(200).json({
-                success: true,
-                message: "Activity recorded",
-                data: {
-                    activityId: activity._id,
-                    user: userEmail,
-                    questionId: activity.questionId,
-                    status: activity.status,
-                    timestamp: activity.timestamp
-                }
-            });
-        } catch (dbError) {
-            if (dbError.code === 11000) { // Duplicate key error
-                return res.status(400).json({ success: false, message: "Question already solved by user" });
-            }
-            throw dbError;
-        }
-    } catch (error) {
-        res.status(500).json({ success: false, error: { details: error.message } });
+        res.status(200).json({ success: true, message: "Activity record ho gayi!", data: activity });
+    } catch (err) {
+        console.log("Activity error logic:", err);
+        res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
+module.exports = { recordActivity };
