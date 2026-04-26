@@ -11,6 +11,7 @@ const cron = require('node-cron');
 const StudyGroup = require('./models/StudyGroup');
 const { archiveIfExpired } = require('./controllers/goalController');
 const authRoutes = require('./routes/authRoutes');
+require('./config/passport')(passport);
 
 const app = express();
 
