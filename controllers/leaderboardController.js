@@ -22,21 +22,21 @@ const buildDateFilter = (timeWindow) => {
     return { $gte: startOfWeek, $lte: now };
   }
 
-  // "all" or default - no date restriction
   return null;
 };
 
-// GET /groups/:id/leaderboard
+
+// GET  leaderboard
 const getLeaderboard = async (req, res) => {
   try {
     const groupId = req.params.id;
     const currentUserId = req.user._id;
 
     // parse query params with defaults
-    const metric = req.query.metric || "solved"; // solved | percentage | timeSpent
+    const metric = req.query.metric || "solved";
     const sort = req.query.sort || "desc";
-    const timeWindow = req.query.timeWindow || "all"; // daily | weekly | all
-    const subjectFilter = req.query.subject || null; // comma-separated subject names
+    const timeWindow = req.query.timeWindow || "all";
+    const subjectFilter = req.query.subject || null;
     const offset = parseInt(req.query.offset) || 0;
     const limit = parseInt(req.query.limit) || 10;
 
@@ -59,8 +59,6 @@ const getLeaderboard = async (req, res) => {
     const cacheKey = `lb:${goal._id}:${metric}:${timeWindow}:${subjectFilter || "all"}:${sort}:${offset}:${limit}`;
     const cached = await getCache(cacheKey);
     if (cached) {
-      // still need to attach the current user's data even from cache
-      // cache stores the full leaderboard, we'll find current user in it
       const currentUserEntry = findCurrentUser(cached.fullBoard, currentUserId, goal);
       return sendSuccess(res, "Leaderboard (cached)", {
         goalId: goal._id,
@@ -71,7 +69,7 @@ const getLeaderboard = async (req, res) => {
       });
     }
 
-    // ---- Step 1: Build the match filter ----
+    //Build the match filter
     let matchFilter = { goal: goal._id };
 
     // date filter
@@ -80,7 +78,7 @@ const getLeaderboard = async (req, res) => {
       matchFilter.activityDate = dateRange;
     }
 
-    // subject filter - only apply if the goal has multiple subjects
+    // subject filter
     if (subjectFilter && goal.subjects.length > 1) {
       const subjectNames = subjectFilter.split(",").map((s) => s.trim());
       const matchingSubjects = goal.subjects.filter((s) => subjectNames.includes(s.name));
@@ -90,7 +88,7 @@ const getLeaderboard = async (req, res) => {
       }
     }
 
-    // ---- Step 2: Aggregate activities grouped by user ----
+    // Aggregate activities grouped by user
     const pipeline = [
       { $match: matchFilter },
       {
@@ -126,7 +124,10 @@ const getLeaderboard = async (req, res) => {
 
     let results = await GroupMemberActivity.aggregate(pipeline);
 
-    // ---- Step 3: Include members who have 0 activity ----
+
+
+
+    // Include members who have 0 activity
     const activeUserIds = results.map((r) => r.userId.toString());
     const User = require("../models/User");
 
@@ -146,7 +147,7 @@ const getLeaderboard = async (req, res) => {
       }
     }
 
-    // ---- Step 4: Sort by the chosen metric ----
+    // Sort by the chosen metric
     let sortField = "solved";
     if (metric === "percentage") sortField = "percentage";
     if (metric === "timeSpent") sortField = "totalTimeSpent";
@@ -163,7 +164,7 @@ const getLeaderboard = async (req, res) => {
       return sortDir * (valA - valB);
     });
 
-    // ---- Step 5: Assign ranks (dense ranking - same score = same rank) ----
+    //Assign ranks (dense ranking - same score = same rank)
     let currentRank = 1;
     for (let i = 0; i < results.length; i++) {
       if (i === 0) {
@@ -181,7 +182,7 @@ const getLeaderboard = async (req, res) => {
       }
     }
 
-    // full board for caching (we need it to find current user later)
+    // full board for caching 
     const fullBoard = results.map((r) => ({
       userId: r.userId.toString(),
       user: r.user,
@@ -192,11 +193,10 @@ const getLeaderboard = async (req, res) => {
       rank: r.rank,
     }));
 
-    // ---- Step 6: Paginate ----
+
     const page = fullBoard.slice(offset, offset + limit);
 
-    // ---- Step 7: Cache it ----
-    // TTL = min(5 minutes, time until deadline)
+    //Cache it
     let ttl = 300;
     if (goal.deadline) {
       const secondsUntilDeadline = Math.floor((new Date(goal.deadline) - new Date()) / 1000);
@@ -234,7 +234,7 @@ function findCurrentUser(fullBoard, userId, goal) {
       rank: entry.rank,
     };
   }
-  // user not found in board at all (shouldn't happen but just in case)
+  // user not found
   return null;
 }
 

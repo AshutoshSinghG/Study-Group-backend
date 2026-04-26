@@ -7,7 +7,7 @@ const { getCache, setCache } = require("../utils/cacheHelper");
 const { archiveIfExpired } = require("./goalController");
 const { getCurrentWindow } = require("./activityController");
 
-// GET /groups/:id/progress
+//progress
 const getProgress = async (req, res) => {
   try {
     const groupId = req.params.id;
@@ -40,7 +40,6 @@ const getProgress = async (req, res) => {
       return sendSuccess(res, "Group progress (cached)", cached);
     }
 
-    // for recurring goals, only count activities in the current window
     const { windowStart, windowEnd } = getCurrentWindow(goal);
 
     let dateMatch = {};
@@ -96,8 +95,6 @@ const getProgress = async (req, res) => {
       }
     }
 
-    // FIXME: for timeSpent metric, "totalQuestions" doesn't make sense as a label
-    // but keeping it for now since the spec uses this format
     const progressPercentage = Math.round((totalSolved / goal.targetCount) * 100);
 
     const progressData = {
@@ -106,12 +103,12 @@ const getProgress = async (req, res) => {
       subjects: goal.subjects.map((s) => s.name),
       totalQuestions: goal.targetCount,
       questionsSolved: totalSolved,
-      progressPercentage: Math.min(progressPercentage, 100), // cap at 100
+      progressPercentage: Math.min(progressPercentage, 100),
       totalTimeSpent: totalTime,
       perMemberProgress,
     };
 
-    // cache it - TTL similar to leaderboard
+    // cache it
     let ttl = 300;
     if (goal.deadline) {
       const secsLeft = Math.floor((new Date(goal.deadline) - new Date()) / 1000);

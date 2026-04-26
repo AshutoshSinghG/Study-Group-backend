@@ -2,7 +2,7 @@ const StudyGroup = require("../models/StudyGroup");
 const User = require("../models/User");
 const { sendSuccess, sendError } = require("../utils/response");
 
-// POST /groups - create a new study group
+//create a new group
 const createGroup = async (req, res) => {
   try {
     const creatorId = req.user._id;
@@ -26,7 +26,7 @@ const createGroup = async (req, res) => {
         "You already have a group as creator",
         "ALREADY_CREATOR",
         "A user can only create one group at a time. You are the creator of: " +
-          existingGroup.name,
+        existingGroup.name,
         409
       );
     }
@@ -101,7 +101,10 @@ const createGroup = async (req, res) => {
   }
 };
 
-// POST /groups/:id/member - add a new member to the group
+
+
+
+//add a new member to the group
 const addMember = async (req, res) => {
   try {
     const groupId = req.params.id;
@@ -118,6 +121,8 @@ const addMember = async (req, res) => {
       );
     }
 
+
+
     const group = await StudyGroup.findById(groupId)
       .populate("members", "email")
       .lean();
@@ -126,7 +131,7 @@ const addMember = async (req, res) => {
       return sendError(res, "Group not found", "GROUP_NOT_FOUND", null, 404);
     }
 
-    // need to check if this guy is actually the creator before letting him add members
+    // check only group creator can add members
     if (group.creator.toString() !== currentUserId.toString()) {
       return sendError(
         res,
@@ -136,7 +141,6 @@ const addMember = async (req, res) => {
         403
       );
     }
-
     // find the user we want to add
     const userToAdd = await User.findOne({ email: email }).lean();
     if (!userToAdd) {
@@ -148,6 +152,7 @@ const addMember = async (req, res) => {
         404
       );
     }
+
 
     // check if already in the group
     const alreadyMember = group.members.some(
@@ -163,12 +168,12 @@ const addMember = async (req, res) => {
       );
     }
 
-    // add them
+    // add
     await StudyGroup.findByIdAndUpdate(groupId, {
       $push: { members: userToAdd._id },
     });
 
-    // get updated group
+    // get updated
     const updatedGroup = await StudyGroup.findById(groupId)
       .populate("members", "email")
       .lean();
