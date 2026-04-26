@@ -4,7 +4,7 @@ const Subject = require("../models/Subject");
 const { sendSuccess, sendError } = require("../utils/response");
 const { invalidatePattern } = require("../utils/cacheHelper");
 
-// helper to check if a deadline goal has expired
+
 // returns true if expired
 const isGoalExpired = (goal) => {
   if (goal.goalType === "deadline" && goal.deadline) {
@@ -13,7 +13,7 @@ const isGoalExpired = (goal) => {
   return false;
 };
 
-// auto-archive expired goals - call this before doing anything goal-related
+// auto-archive expired goals
 const archiveIfExpired = async (group) => {
   if (!group.activeGoal) return null;
 
@@ -24,17 +24,20 @@ const archiveIfExpired = async (group) => {
     goal.isActive = false;
     await goal.save();
 
-    // clear the activeGoal reference on the group
+
     await StudyGroup.findByIdAndUpdate(group._id, { activeGoal: null });
 
     console.log(`Goal "${goal.title}" auto-archived because deadline passed`);
-    return goal; // return the archived goal so caller knows what happened
+    return goal;
   }
 
   return null;
 };
 
-// POST /groups/:id/goal - create a new goal for the group
+
+
+
+//create a new goal for the group
 const createGoal = async (req, res) => {
   try {
     const groupId = req.params.id;
@@ -101,7 +104,7 @@ const createGoal = async (req, res) => {
       subjectIds.push(subj._id);
     }
 
-    // validate goalType + deadline/frequency combo
+    // vcheck goal typpe & deadline
     const type = goalType || "deadline";
 
     if (type === "deadline" && !deadline) {
@@ -123,8 +126,7 @@ const createGoal = async (req, res) => {
         400
       );
     }
-
-    // make sure deadline is in the future
+    // Future me deadline hai ki nahi
     if (type === "deadline" && new Date(deadline) <= new Date()) {
       return sendError(
         res,
@@ -134,6 +136,8 @@ const createGoal = async (req, res) => {
         400
       );
     }
+
+
 
     const newGoal = await GroupGoal.create({
       group: groupId,
@@ -174,7 +178,10 @@ const createGoal = async (req, res) => {
       },
       201
     );
-  } catch (err) {
+  }
+
+
+  catch (err) {
     console.log("Error creating goal:", err);
     return sendError(
       res,
@@ -186,7 +193,7 @@ const createGoal = async (req, res) => {
   }
 };
 
-// PUT /groups/:id/goal - edit the active goal (only creator)
+//edit the active goal (only creator)
 const editGoal = async (req, res) => {
   try {
     const groupId = req.params.id;
@@ -197,6 +204,7 @@ const editGoal = async (req, res) => {
     if (!group) {
       return sendError(res, "Group not found", "GROUP_NOT_FOUND", null, 404);
     }
+
 
     if (group.creator.toString() !== userId.toString()) {
       return sendError(
@@ -222,7 +230,6 @@ const editGoal = async (req, res) => {
     if (!goal) {
       return sendError(res, "Goal not found", "GOAL_NOT_FOUND", null, 404);
     }
-
     // update the fields that were provided
     if (deadline !== undefined) {
       if (new Date(deadline) <= new Date()) {

@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const passport = require("passport");
 const { sendSuccess, sendError } = require("../utils/response");
 
-// kick off google oauth flow
+
 const googleLogin = passport.authenticate("google", {
   scope: ["profile", "email"],
   session: false,
@@ -26,6 +26,7 @@ const googleCallback = (req, res, next) => {
       );
     }
 
+
     // create JWT for the user
     const tokenPayload = {
       userId: user._id,
@@ -36,8 +37,8 @@ const googleCallback = (req, res, next) => {
       expiresIn: "7d",
     });
 
-    // TODO: in production, probably redirect to frontend with token in URL params
-    // for now just return JSON
+
+
     return sendSuccess(res, "Login successful", {
       token,
       user: {
