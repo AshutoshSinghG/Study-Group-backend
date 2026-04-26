@@ -69,4 +69,58 @@ const archiveIfExpired = async (group) => {
 
     return goal;
 };
-module.exports = { createGoal, archiveIfExpired };
+
+// Edit the active goal (Only for Group Creator)
+const editGoal = async (req, res) => {
+    try {
+        const groupId = req.params.id;
+        const userId = req.user.userId;
+        const { title, deadline, targetCount, frequency } = req.body;
+
+        const group = await StudyGroup.findById(groupId);
+        if (!group) return res.status(404).json({ success: false, message: "Group not found" });
+
+        // check only creator
+        if (group.creator.toString() !== userId.toString()) {
+            return res.status(403).json({ success: false, message: "only group creator can edit" });
+        }
+
+        //Active Goal Check
+        if (!group.activeGoal) {
+            return res.status(400).json({ success: false, message: "not found active goal" });
+        }
+
+        const goal = await GroupGoal.findById(group.activeGoal);
+        if (!goal) return res.status(404).json({ success: false, message: "not faund goal data" });
+
+        //Update Fields
+        if (title) goal.title = title;
+        if (targetCount) goal.targetCount = targetCount;
+        if (frequency) goal.frequency = frequency;
+
+        if (deadline) {
+            if (new Date(deadline) <= new Date()) {
+                return res.status(400).json({ success: false, message: "deadline passed" });
+            }
+            goal.deadline = new Date(deadline);
+        }
+
+        await goal.save();
+
+        //chane Leaderboard Chache
+        const keys = await client.keys(`lb:${groupId}:*`);
+        if (keys.length > 0) await client.del(keys);
+        await client.del(`progress:${groupId}`);
+
+        return res.status(200).json({
+            success: true,
+            message: "Goal update ho gaya aur leaderboard refresh kar diya gaya",
+            data: goal
+        });
+
+    } catch (err) {
+        console.error("Edit Goal Error:", err.message);
+        res.status(500).json({ success: false, message: "Server error during edit" });
+    }
+};
+module.exports = { createGoal, archiveIfExpired, editGoal };
