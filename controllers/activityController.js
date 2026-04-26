@@ -10,28 +10,28 @@ const recordActivity = async (req, res) => {
         const groupId = req.params.id;
 
         const goal = await GroupGoal.findOne({ group: groupId, isActive: true });
-        if (!goal) return res.status(400).json({ success: false, message: "Koi active goal nahi hai" });
+        if (!goal) return res.status(400).json({ success: false, message: "No active goal found" });
 
         // Status check: only solved/correct 
         if (!["solved", "correct"].includes(status)) {
-            return res.status(400).json({ success: false, message: "Attempt status valid nahi hai" });
+            return res.status(400).json({ success: false, message: "Attempt status is not valid" });
         }
 
         // Time window check 
         const now = new Date();
         if (goal.deadline && now > new Date(goal.deadline)) {
-            return res.status(400).json({ success: false, message: "Goal archive ho chuka hai" });
+            return res.status(400).json({ success: false, message: "Goal is archive" });
         }
 
         const question = await Question.findById(questionId);
-        if (!question) return res.status(404).json({ success: false, message: "Sawal nahi mila" });
+        if (!question) return res.status(404).json({ success: false, message: "Question not found" });
 
         // Subject match check 
         if (!goal.subjects.includes(question.subjectId.toString())) {
-            return res.status(400).json({ success: false, message: "Ye subject is goal mein nahi hai" });
+            return res.status(400).json({ success: false, message: "This subject is not in this goal" });
         }
 
-        // Unique attempt check (Per-user de-dupe) 
+        // Unique attempt check
         const alreadyDone = await GroupMemberActivity.findOne({
             goal: goal._id,
             user: userId,
@@ -39,7 +39,7 @@ const recordActivity = async (req, res) => {
         });
 
         if (alreadyDone) {
-            return res.status(409).json({ success: false, message: "Ye sawal aap pehle hi solve kar chuke ho" });
+            return res.status(409).json({ success: false, message: "You are already solved this question" });
         }
 
         const activity = await GroupMemberActivity.create({
@@ -53,12 +53,11 @@ const recordActivity = async (req, res) => {
             activityDate: now
         });
 
-        // Invalidate Cache 
         const keys = await client.keys(`lb:${groupId}:*`);
         if (keys.length > 0) await client.del(keys);
         await client.del(`progress:${groupId}`);
 
-        res.status(200).json({ success: true, message: "Activity record ho gayi!", data: activity });
+        res.status(200).json({ success: true, message: "Activity recorded successfully", data: activity });
     } catch (err) {
         console.log("Activity error logic:", err);
         res.status(500).json({ success: false, message: "Server error" });

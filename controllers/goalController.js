@@ -8,17 +8,17 @@ const createGoal = async (req, res) => {
         const { title, subjects, targetCount, goalType, deadline, frequency } = req.body;
 
         const group = await StudyGroup.findById(groupId);
-        if (!group) return res.status(404).json({ success: false, message: "Group nahi mila" });
+        if (!group) return res.status(404).json({ success: false, message: "Not found Group" });
 
         // Only creator check 
         if (group.creator.toString() !== req.user.userId.toString()) {
-            return res.status(403).json({ success: false, message: "Sirf creator goal set kar sakta hai" });
+            return res.status(403).json({ success: false, message: "Only creator can set goals" });
         }
 
         // Ek waqt pe ek hi active goal 
         const existingGoal = await GroupGoal.findOne({ group: groupId, isActive: true });
         if (existingGoal) {
-            return res.status(409).json({ success: false, message: "Pehle se ek goal active hai" });
+            return res.status(409).json({ success: false, message: "one goal active alredy" });
         }
 
         // Resolve subject names to IDs 
@@ -40,10 +40,10 @@ const createGoal = async (req, res) => {
         group.activeGoal = newGoal._id;
         await group.save();
 
-        res.status(201).json({ success: true, message: "Goal set ho gaya!", data: newGoal });
+        res.status(201).json({ success: true, message: "Goal created successfully", data: newGoal });
     } catch (err) {
         console.error("Goal Error:", err);
-        res.status(500).json({ success: false, message: "Goal banane mein issue aaya" });
+        res.status(500).json({ success: false, message: "Error creating goal" });
     }
 };
 
@@ -61,9 +61,9 @@ const archiveIfExpired = async (group) => {
         goal.isActive = false;
         await goal.save();
 
-        // Group se link hata do taaki creator naya goal bana sake
+        // Group archive goal
         await StudyGroup.findByIdAndUpdate(group._id, { activeGoal: null });
-        console.log(`[System]: Goal "${goal.title}" archive ho gaya (Deadline expired)`);
+        console.log(`[System]: Goal "${goal.title}" is expired`);
         return null;
     }
 

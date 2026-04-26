@@ -7,14 +7,14 @@ const googleLogin = passport.authenticate("google", {
   session: false,
 });
 
-// Jab Google login successful ho jaye, toh Google yahan wapas bhejta hai
+// Google login successfully, Google send callback 
 const googleCallback = (req, res, next) => {
   passport.authenticate("google", { session: false }, (err, user, info) => {
     if (err) {
       console.error("Google Auth error:", err);
       return res.status(500).json({
         success: false,
-        message: "OAuth process fail ho gaya",
+        message: "OAuth process fail",
         error: { code: "AUTH_ERROR", details: err.message }
       });
     }
@@ -23,7 +23,7 @@ const googleCallback = (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Google se authentication nahi ho paya",
+        message: "Google authentication fail",
         error: { code: "OAUTH_FAILED" }
       });
     }
@@ -38,7 +38,7 @@ const googleCallback = (req, res, next) => {
     // Final Success Response
     return res.status(200).json({
       success: true,
-      message: "Mast! Login successful raha",
+      message: "Login successful",
       data: {
         token,
         user: {
@@ -53,12 +53,12 @@ const googleCallback = (req, res, next) => {
   })(req, res, next);
 };
 
-// Logged in user ki apni details dekhne ke liye
+// get own deatail
 const getMe = async (req, res) => {
   try {
     return res.status(200).json({
       success: true,
-      message: "User details mil gayi",
+      message: "User details successfully",
       data: {
         id: req.user._id,
         email: req.user.email,
@@ -67,7 +67,7 @@ const getMe = async (req, res) => {
       }
     });
   } catch (err) {
-    console.log("getMe function mein dikat aayi:", err);
+    console.log("getMe error:", err);
     return res.status(500).json({ success: false, message: "Fetch fail" });
   }
 };
