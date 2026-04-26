@@ -27,11 +27,11 @@ const ActivitySchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ["solved", "correct"], // Task: Only count these [cite: 45]
+        enum: ["solved", "correct"],
         required: true
     },
     timeSpent: {
-        type: Number, // Seconds mein
+        type: Number,
         required: true
     },
     timestamp: {
@@ -40,8 +40,7 @@ const ActivitySchema = new mongoose.Schema({
     }
 });
 
-// Crucial Indexing: Taaki leaderboard queries fast rahein aur de-duplication ho sake [cite: 47, 85]
-ActivitySchema.index({ goalId: 1, userEmail: 1, questionId: 1 }, { unique: true }); 
+ActivitySchema.index({ goalId: 1, userEmail: 1, questionId: 1 }, { unique: true });
 ActivitySchema.index({ timestamp: 1 });
 
 module.exports = mongoose.model("GroupMemberActivity", ActivitySchema);

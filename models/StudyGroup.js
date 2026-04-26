@@ -7,12 +7,12 @@ const StudyGroupSchema = new mongoose.Schema({
         trim: true
     },
     creator: {
-        type: String, // Hum creator ki email ya ID store karenge
+        type: String,
         required: true,
         ref: "User"
     },
     members: [{
-        type: String, // Member emails ki list
+        type: String,
         ref: "User"
     }],
     activeGoal: {
@@ -22,11 +22,10 @@ const StudyGroupSchema = new mongoose.Schema({
     },
     createdAt: {
         type: Date,
-        default: Date.now // UTC by default [cite: 86]
+        default: Date.now
     }
 });
 
-// Indexing for faster lookups
 StudyGroupSchema.index({ creator: 1 });
 StudyGroupSchema.index({ members: 1 });
 
