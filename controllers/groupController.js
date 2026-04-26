@@ -1,199 +1,105 @@
-const StudyGroup = require("../models/StudyGroup");
-const User = require("../models/User");
-const { sendSuccess, sendError } = require("../utils/response");
+const StudyGroup = require('../models/StudyGroup');
+const User = require('../models/User');
 
-//create a new group
-const createGroup = async (req, res) => {
-  try {
-    const creatorId = req.user._id;
-    const { name, members } = req.body;
+//Create Group
+exports.createGroup = async (req, res) => {
+    try {
+        const { name, members } = req.body;
+        const creatorEmail = req.user.email;
 
-    if (!name || name.trim() === "") {
-      return sendError(
-        res,
-        "Group name is required",
-        "MISSING_FIELD",
-        "Please provide a group name",
-        400
-      );
-    }
-
-    // check if this user is already a creator of another group
-    const existingGroup = await StudyGroup.findOne({ creator: creatorId }).lean();
-    if (existingGroup) {
-      return sendError(
-        res,
-        "You already have a group as creator",
-        "ALREADY_CREATOR",
-        "A user can only create one group at a time. You are the creator of: " +
-        existingGroup.name,
-        409
-      );
-    }
-
-    // figure out the member list
-    let memberIds = [creatorId]; // creator is always a member
-
-    if (members && members.length > 0) {
-      // look up each member email, make sure they exist
-      for (let i = 0; i < members.length; i++) {
-        const memberEmail = members[i];
-        const memberUser = await User.findOne({ email: memberEmail }).lean();
-
-        if (!memberUser) {
-          return sendError(
-            res,
-            `User with email ${memberEmail} not found`,
-            "USER_NOT_FOUND",
-            "Make sure all members have an account before adding them",
-            404
-          );
+        //A single user can be a creator in only one group at a time 
+        const existingGroup = await StudyGroup.findOne({ creator: creatorEmail });
+        if (existingGroup) {
+            return res.status(400).json({
+                success: false,
+                message: "You are already a creator of another group",
+                data: null,
+                error: { code: "CREATOR_LIMIT_REACHED", details: "One user can create only one group." }
+            });
         }
 
-        // don't add the creator twice
-        if (memberUser._id.toString() === creatorId.toString()) {
-          continue;
+        // Creator ko members list mein add karna (agar pehle se nahi hai)
+        let groupMembers = members || [];
+        if (!groupMembers.includes(creatorEmail)) {
+            groupMembers.push(creatorEmail);
         }
 
-        // check for duplicates in the list itself
-        if (!memberIds.find((id) => id.toString() === memberUser._id.toString())) {
-          memberIds.push(memberUser._id);
-        }
-      }
+        const newGroup = await StudyGroup.create({
+            name,
+            creator: creatorEmail,
+            members: groupMembers
+        });
+
+        res.status(201).json({
+            success: true,
+            message: "Group created successfully",
+            data: {
+                groupId: newGroup._id,
+                name: newGroup.name,
+                creator: newGroup.creator,
+                members: newGroup.members,
+                activeGoal: null,
+                createdAt: newGroup.createdAt
+            },
+            error: null
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Server Error",
+            data: null,
+            error: { code: "SERVER_ERROR", details: error.message }
+        });
     }
-
-    const newGroup = await StudyGroup.create({
-      name: name.trim(),
-      creator: creatorId,
-      members: memberIds,
-    });
-
-    // populate the response with actual email addresses
-    const populated = await StudyGroup.findById(newGroup._id)
-      .populate("creator", "email name")
-      .populate("members", "email name")
-      .lean();
-
-    const memberEmails = populated.members.map((m) => m.email);
-
-    return sendSuccess(
-      res,
-      "Group created successfully",
-      {
-        groupId: populated._id,
-        name: populated.name,
-        creator: populated.creator.email,
-        members: memberEmails,
-        activeGoal: null,
-        createdAt: populated.createdAt,
-      },
-      201
-    );
-  } catch (err) {
-    console.log("Error creating group:", err);
-    return sendError(
-      res,
-      "Failed to create group",
-      "CREATE_GROUP_ERROR",
-      err.message,
-      500
-    );
-  }
 };
 
+//Add a member to group
+exports.addMember = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const groupId = req.params.id;
 
+        const group = await StudyGroup.findById(groupId);
+        if (!group) {
+            return res.status(404).json({ success: false, message: "Group not found" });
+        }
 
+        //Only creator can add members 
+        if (group.creator !== req.user.email) {
+            return res.status(403).json({
+                success: false,
+                message: "Only the group creator can add members",
+                error: { code: "UNAUTHORIZED_ACTION" }
+            });
+        }
 
-//add a new member to the group
-const addMember = async (req, res) => {
-  try {
-    const groupId = req.params.id;
-    const currentUserId = req.user._id;
-    const { email } = req.body;
+        //Cannot add duplicate members
+        if (group.members.includes(email)) {
+            return res.status(409).json({
+                success: false,
+                message: "User is already a member of this group",
+                data: null,
+                error: { 
+                    code: "USER_ALREADY_MEMBER", 
+                    details: `The email ${email} is already part of this group.` 
+                }
+            });
+        }
 
-    if (!email) {
-      return sendError(
-        res,
-        "Member email is required",
-        "MISSING_FIELD",
-        null,
-        400
-      );
+        //add member
+        group.members.push(email);
+        await group.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Member added successfully",
+            data: {
+                groupId: group._id,
+                members: group.members
+            },
+            error: null
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: { details: error.message } });
     }
-
-
-
-    const group = await StudyGroup.findById(groupId)
-      .populate("members", "email")
-      .lean();
-
-    if (!group) {
-      return sendError(res, "Group not found", "GROUP_NOT_FOUND", null, 404);
-    }
-
-    // check only group creator can add members
-    if (group.creator.toString() !== currentUserId.toString()) {
-      return sendError(
-        res,
-        "Only the group creator can add members",
-        "NOT_AUTHORIZED",
-        null,
-        403
-      );
-    }
-    // find the user we want to add
-    const userToAdd = await User.findOne({ email: email }).lean();
-    if (!userToAdd) {
-      return sendError(
-        res,
-        "User not found with that email",
-        "USER_NOT_FOUND",
-        `No account found for ${email}`,
-        404
-      );
-    }
-
-
-    // check if already in the group
-    const alreadyMember = group.members.some(
-      (m) => m._id.toString() === userToAdd._id.toString()
-    );
-    if (alreadyMember) {
-      return sendError(
-        res,
-        "User is already a member of this group",
-        "USER_ALREADY_MEMBER",
-        `The email ${email} is already part of this group.`,
-        409
-      );
-    }
-
-    // add
-    await StudyGroup.findByIdAndUpdate(groupId, {
-      $push: { members: userToAdd._id },
-    });
-
-    // get updated
-    const updatedGroup = await StudyGroup.findById(groupId)
-      .populate("members", "email")
-      .lean();
-
-    const allEmails = updatedGroup.members.map((m) => m.email);
-
-    return sendSuccess(res, "Member added successfully", {
-      groupId: updatedGroup._id,
-      members: allEmails,
-    });
-  } catch (err) {
-    console.log("Error adding member:", err);
-    return sendError(
-      res,
-      "Failed to add member",
-      "ADD_MEMBER_ERROR",
-      err.message,
-      500
-    );
-  }
 };
-
-module.exports = { createGroup, addMember };

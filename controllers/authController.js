@@ -1,68 +1,74 @@
 const jwt = require("jsonwebtoken");
 const passport = require("passport");
-const { sendSuccess, sendError } = require("../utils/response");
 
-
+// go to google login
 const googleLogin = passport.authenticate("google", {
   scope: ["profile", "email"],
   session: false,
 });
 
-// google sends user back here after they login
+// Jab Google login successful ho jaye, toh Google yahan wapas bhejta hai
 const googleCallback = (req, res, next) => {
   passport.authenticate("google", { session: false }, (err, user, info) => {
     if (err) {
-      console.log("Google callback error:", err);
-      return sendError(res, "OAuth failed", "OAUTH_ERROR", err.message, 500);
+      console.error("Google Auth error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "OAuth process fail ho gaya",
+        error: { code: "AUTH_ERROR", details: err.message }
+      });
     }
 
+    // if user not found
     if (!user) {
-      return sendError(
-        res,
-        "Could not authenticate with Google",
-        "OAUTH_FAILED",
-        null,
-        401
-      );
+      return res.status(401).json({
+        success: false,
+        message: "Google se authentication nahi ho paya",
+        error: { code: "OAUTH_FAILED" }
+      });
     }
 
+    //JWT token create
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-    // create JWT for the user
-    const tokenPayload = {
-      userId: user._id,
-      email: user.email,
-    };
-
-    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
-
-
-    return sendSuccess(res, "Login successful", {
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        avatar: user.avatar,
+    // Final Success Response
+    return res.status(200).json({
+      success: true,
+      message: "Mast! Login successful raha",
+      data: {
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          avatar: user.avatar,
+        },
       },
+      error: null
     });
   })(req, res, next);
 };
 
-// get current logged in user's info
+// Logged in user ki apni details dekhne ke liye
 const getMe = async (req, res) => {
   try {
-    return sendSuccess(res, "User info retrieved", {
-      id: req.user._id,
-      email: req.user.email,
-      name: req.user.name,
-      avatar: req.user.avatar,
+    return res.status(200).json({
+      success: true,
+      message: "User details mil gayi",
+      data: {
+        id: req.user._id,
+        email: req.user.email,
+        name: req.user.name,
+        avatar: req.user.avatar,
+      }
     });
   } catch (err) {
-    console.log("getMe broke:", err);
-    return sendError(res, "Failed to get user info", "FETCH_ERROR", null, 500);
+    console.log("getMe function mein dikat aayi:", err);
+    return res.status(500).json({ success: false, message: "Fetch fail" });
   }
 };
 
