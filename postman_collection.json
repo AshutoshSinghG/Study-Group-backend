@@ -1,0 +1,392 @@
+{
+  "info": {
+    "_postman_id": "0bf13f6c-4df5-4318-8f71-527ba38afa32",
+    "name": "Study Group API - Ashutosh Kumar",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "48155865",
+    "_collection_link": "https://go.postman.co/collection/48155865-0bf13f6c-4df5-4318-8f71-527ba38afa32?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Google Login Start",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/auth/google",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "auth",
+                "google"
+              ]
+            },
+            "description": "Redirects to Google OAuth page."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{JWT_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/auth/me",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Groups",
+      "item": [
+        {
+          "name": "Create Study Group",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{JWT_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Algebra Study Group\",\n    \"members\": [\"user2@gmail.com\", \"user3@gmail.com\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/groups",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "groups"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Group Member",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{JWT_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"user4@gmail.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/groups/:id/member",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "groups",
+                ":id",
+                "member"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "69ee8da282fe3268d5bd731e"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Goals",
+      "item": [
+        {
+          "name": "Set Group Goal",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{JWT_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Solve 100 Math Questions\",\n    \"subjects\": [\"Physics\"],\n    \"targetCount\": 100,\n    \"metric\": \"questionsSolved\",\n    \"goalType\": \"deadline\",\n    \"frequency\":\"daily\",\n    \"deadline\": \"2026-12-31T23:59:59Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/groups/:id/goal",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "groups",
+                ":id",
+                "goal"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "69ee8da282fe3268d5bd731e"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit Goal",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{JWT_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetCount\": 150,\n    \"deadline\": \"2027-01-15T23:59:59Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/groups/:id/goal",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "groups",
+                ":id",
+                "goal"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "69ee8da282fe3268d5bd731e"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Activity & Analytics",
+      "item": [
+        {
+          "name": "Record Activity",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{JWT_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"questionId\": \"69ed243e328b02e60e6f7813\",\n    \"status\": \"solved\",\n    \"timeSpent\": 120\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/groups/:id/activity",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "groups",
+                ":id",
+                "activity"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "69ee8da282fe3268d5bd731e"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Leaderboard",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{JWT_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/groups/:id/leaderboard?metric=solved&sort=desc&timeWindow=all&offset=0&limit=10",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "groups",
+                ":id",
+                "leaderboard"
+              ],
+              "query": [
+                {
+                  "key": "metric",
+                  "value": "solved"
+                },
+                {
+                  "key": "sort",
+                  "value": "desc"
+                },
+                {
+                  "key": "timeWindow",
+                  "value": "all"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "69ee8da282fe3268d5bd731e"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Group Progress",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{JWT_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/groups/:id/progress",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "groups",
+                ":id",
+                "progress"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "69ee8da282fe3268d5bd731e"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": ""
+    },
+    {
+      "key": "JWT_TOKEN",
+      "value": ""
+    }
+  ]
+}
