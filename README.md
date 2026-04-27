@@ -3,6 +3,10 @@
 
 This is an intermediate level backend service that helps students create private groups, set goals, and track their progress through a real-time leaderboard. It is built using **node.js, express, mongodb, and redis**.
 
+Live Backend: https://study-group-backend-8zop.onrender.com
+
+postman Collection: https://github.com/AshutoshSinghG/Study-Group-backend/blob/main/postman_collection.json
+
 ## Features:
 
 * **Google OAuth (JWT-based):** Secure login system where only Google email authenticated users can create groups or contribute.
