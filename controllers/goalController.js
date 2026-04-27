@@ -6,13 +6,13 @@ const { client } = require('../utils/redisClient')
 const createGoal = async (req, res) => {
     try {
         const groupId = req.params.id;
-        const { title, subjects, targetCount, goalType, deadline, frequency } = req.body;
+        const { title, subjects, targetCount, metric, goalType, deadline, frequency } = req.body;
 
         const group = await StudyGroup.findById(groupId);
         if (!group) return res.status(404).json({ success: false, message: "Not found Group" });
 
         // Only creator check 
-        if (group.creator.toString() !== req.user.userId.toString()) {
+        if (group.creator.toLowerCase() !== req.user.email.toLowerCase()) {
             return res.status(403).json({ success: false, message: "Only creator can set goals" });
         }
 
@@ -26,11 +26,16 @@ const createGoal = async (req, res) => {
         const subjectDocs = await Subject.find({ name: { $in: subjects } });
         const subjectIds = subjectDocs.map(s => s._id);
 
+        if (subjectDocs.length === 0) {
+            console.log("Warning: No subjects found in DB for names:", subjects);
+        }
+
         const newGoal = await GroupGoal.create({
             group: groupId,
             title,
             subjects: subjectIds,
             targetCount,
+            metric,
             goalType: goalType || "deadline",
             deadline: deadline ? new Date(deadline) : null,
             frequency: frequency || "none",
@@ -75,14 +80,14 @@ const archiveIfExpired = async (group) => {
 const editGoal = async (req, res) => {
     try {
         const groupId = req.params.id;
-        const userId = req.user.userId;
+        const email = req.user.email;
         const { title, deadline, targetCount, frequency } = req.body;
 
         const group = await StudyGroup.findById(groupId);
         if (!group) return res.status(404).json({ success: false, message: "Group not found" });
 
         // check only creator
-        if (group.creator.toString() !== userId.toString()) {
+        if (group.creator.toLowerCase() !== email.toLowerCase()) {
             return res.status(403).json({ success: false, message: "only group creator can edit" });
         }
 

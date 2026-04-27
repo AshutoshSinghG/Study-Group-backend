@@ -3,8 +3,8 @@ const GroupGoal = require('../models/GroupGoal');
 
 exports.getGroupProgress = async (req, res) => {
     try {
-        const groupId = req.params.id;
-        const activeGoal = await GroupGoal.findOne({ groupId, isActive: true });
+        const group = req.params.id;
+        const activeGoal = await GroupGoal.findOne({ group, isActive: true });
 
         if (!activeGoal) return res.status(404).json({ success: false, message: "No active goal" });
 

@@ -6,7 +6,6 @@ const { client } = require("../utils/redisClient");
 const recordActivity = async (req, res) => {
     try {
         const { questionId, status, timeSpent } = req.body;
-        const userId = req.user.userId;
         const groupId = req.params.id;
 
         const goal = await GroupGoal.findOne({ group: groupId, isActive: true });
@@ -34,7 +33,7 @@ const recordActivity = async (req, res) => {
         // Unique attempt check
         const alreadyDone = await GroupMemberActivity.findOne({
             goal: goal._id,
-            user: userId,
+            userEmail: req.user.email,
             questionId: questionId
         });
 
@@ -43,12 +42,12 @@ const recordActivity = async (req, res) => {
         }
 
         const activity = await GroupMemberActivity.create({
-            group: groupId,
-            goal: goal._id,
-            user: userId,
-            questionId,
-            subject: question.subjectId,
-            status,
+            groupId,
+            goalId: goal._id,
+            userEmail: req.user.email,
+            subjectId: question.subjectId,
+            questionId: question._id,
+            status: status || 'solved',
             timeSpent,
             activityDate: now
         });

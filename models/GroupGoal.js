@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const GroupGoalSchema = new mongoose.Schema({
-    groupId: {
+    group: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "StudyGroup",
         required: true
@@ -19,7 +19,7 @@ const GroupGoalSchema = new mongoose.Schema({
         enum: ["questionsSolved", "percentageContributed", "timeSpent"],
         default: "questionsSolved"
     },
-    targetValue: {
+    targetCount: {
         type: Number,
         required: true
     },
@@ -31,9 +31,10 @@ const GroupGoalSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
-    isRecurring: {
-        type: Boolean,
-        default: false
+    goalType: {
+        type: String,
+        enum: ["deadline", "recurring"],
+        default: "deadline"
     },
     frequency: {
         type: String,
@@ -43,14 +44,9 @@ const GroupGoalSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
-    },
-    isArchived: {
-        type: Boolean,
-        default: false
     }
 });
 
-// Indexing for goal tracking
-GroupGoalSchema.index({ groupId: 1, isActive: 1 });
+GroupGoalSchema.index({ group: 1, isActive: 1 });
 
 module.exports = mongoose.model("GroupGoal", GroupGoalSchema);
